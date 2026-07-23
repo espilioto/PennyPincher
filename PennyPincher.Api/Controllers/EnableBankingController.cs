@@ -78,6 +78,17 @@ public class EnableBankingController : ErrorOrApiController
         return Ok(_service.GetConnections(userId));
     }
 
+    [HttpGet("balances")]
+    public async Task<IActionResult> GetBalancesOverview(CancellationToken ct)
+    {
+        var userId = User.GetUserId();
+        if (userId is null)
+            return Problem(ErrorOr.Error.Forbidden());
+
+        var result = await _service.GetBalancesOverviewAsync(userId, ct);
+        return result.Match(r => Ok(r), errors => Problem(errors));
+    }
+
     [HttpGet("accounts/{accountUid}/balances")]
     public async Task<IActionResult> GetBalances(string accountUid, CancellationToken ct)
     {

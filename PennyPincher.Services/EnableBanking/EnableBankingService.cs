@@ -93,6 +93,59 @@ public class EnableBankingService : IEnableBankingService
             .ToList();
     }
 
+    public async Task<ErrorOr<List<BankBalanceDto>>> GetBalancesOverviewAsync(string userId, CancellationToken ct)
+    {
+        var connections = LoadConnections(userId);
+        if (connections.Count == 0)
+            return Error.NotFound(description: "No active Enable Banking session — link an account first");
+
+        var results = new List<BankBalanceDto>();
+        foreach (var conn in connections.Values.OrderBy(c => c.AspspName, StringComparer.OrdinalIgnoreCase))
+        {
+            decimal total = 0m;
+            string? currency = null;
+            var available = true;
+
+            foreach (var account in conn.Accounts)
+            {
+                var balancesResult = await _client.GetBalancesAsync(account.Uid, ct);
+                var picked = balancesResult.IsError ? null : PickRepresentative(balancesResult.Value.Balances);
+                if (picked is null)
+                {
+                    // Can't trust a partial sum — mark the whole bank unavailable.
+                    available = false;
+                    break;
+                }
+                total += picked.Amount;
+                currency ??= picked.Currency;
+            }
+
+            results.Add(available
+                ? new BankBalanceDto(conn.AspspName, conn.AspspCountry, total, currency, true)
+                : new BankBalanceDto(conn.AspspName, conn.AspspCountry, null, null, false));
+        }
+
+        return results;
+    }
+
+    // Enable Banking returns several balance types per account; pick the most
+    // "current" one, preferring interim-available, then closing-booked, etc.
+    private static EbBalanceSummary? PickRepresentative(IReadOnlyList<EbBalanceSummary> balances)
+    {
+        if (balances.Count == 0)
+            return null;
+
+        string[] preference = ["ITAV", "CLBD", "XPCD", "CLAV", "ITBD", "OTHR"];
+        foreach (var type in preference)
+        {
+            var match = balances.FirstOrDefault(b => string.Equals(b.BalanceType, type, StringComparison.OrdinalIgnoreCase));
+            if (match is not null)
+                return match;
+        }
+
+        return balances[0];
+    }
+
     public SessionStatusDto GetSessionStatus(string userId)
     {
         var connections = LoadConnections(userId).Values;

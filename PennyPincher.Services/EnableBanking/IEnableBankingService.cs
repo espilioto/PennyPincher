@@ -10,6 +10,7 @@ public interface IEnableBankingService
     Task<ErrorOr<CompleteAuthResponse>> CompleteAuthAsync(string userId, string code, string? state, CancellationToken ct);
     ErrorOr<IReadOnlyList<LinkedAccountDto>> GetCachedAccounts(string userId);
     IReadOnlyList<BankConnectionDto> GetConnections(string userId);
+    Task<ErrorOr<List<BankBalanceDto>>> GetBalancesOverviewAsync(string userId, CancellationToken ct);
     SessionStatusDto GetSessionStatus(string userId);
     Task<ErrorOr<List<AccountBalanceDto>>> GetBalancesAsync(string userId, string accountUid, CancellationToken ct);
     Task<ErrorOr<List<AccountTransactionDto>>> GetTransactionsAsync(string userId, string accountUid, DateOnly dateFrom, CancellationToken ct);
