@@ -1,13 +1,13 @@
 @page
-@model PennyPincher.WebApp.Pages.EnableBanking.SandboxModel
+@model PennyPincher.WebApp.Pages.EnableBanking.IndexModel
 @{
-    ViewData["Title"] = "Enable Banking (sandbox)";
+    ViewData["Title"] = "Linked Banks";
 }
 
 @Html.AntiForgeryToken()
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0">Enable Banking &mdash; Sandbox</h4>
+    <h4 class="mb-0">Linked Banks</h4>
     <span class="text-muted small">@Model.Accounts.Count linked account(s)</span>
 </div>
 
@@ -18,7 +18,7 @@
 
 <div class="card mb-4">
     <div class="card-body">
-        <h6 class="card-title">Link a bank (ASPSP)</h6>
+        <h6 class="card-title">Link a bank</h6>
 
         <form method="get" class="d-flex gap-2 align-items-end mb-3">
             <div>
@@ -28,21 +28,21 @@
                        placeholder="GR" />
             </div>
             <button type="submit" class="btn btn-outline-secondary btn-sm">Filter</button>
-            <span class="text-muted small ms-2 mb-2">@Model.Aspsps.Count connector(s)</span>
+            <span class="text-muted small ms-2 mb-2">@Model.Banks.Count bank(s) available</span>
         </form>
 
         <form method="post" asp-page-handler="Link" class="d-flex gap-2 align-items-end">
             <div>
-                <label class="form-label small text-muted mb-1">ASPSP</label>
+                <label class="form-label small text-muted mb-1">Bank</label>
                 <select name="aspspName" class="form-select form-select-sm" id="aspspSelect">
-                    @foreach (var a in Model.Aspsps)
+                    @foreach (var b in Model.Banks)
                     {
-                        <option value="@a.Name" data-country="@a.Country">@a.Name (@a.Country)@(a.Beta ? " · beta" : "")@(a.PsuTypes.Contains("personal") ? "" : " · no personal")</option>
+                        <option value="@b.Name" data-country="@b.Country">@b.Name (@b.Country)@(b.Beta ? " · beta" : "")@(b.PsuTypes.Contains("personal") ? "" : " · no personal")</option>
                     }
                 </select>
             </div>
-            <input type="hidden" name="aspspCountry" id="aspspCountry" value="@(Model.Aspsps.FirstOrDefault()?.Country ?? Model.Country)" />
-            <button type="submit" class="btn btn-primary btn-sm" disabled="@(Model.Aspsps.Count == 0)">Link</button>
+            <input type="hidden" name="aspspCountry" id="aspspCountry" value="@(Model.Banks.FirstOrDefault()?.Country ?? Model.Country)" />
+            <button type="submit" class="btn btn-primary btn-sm" disabled="@(Model.Banks.Count == 0)">Link</button>
         </form>
     </div>
 </div>
@@ -57,7 +57,6 @@
                     <th>IBAN / ID</th>
                     <th>Product</th>
                     <th>Currency</th>
-                    <th style="width: 240px;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -68,24 +67,15 @@
                         <td><code class="small">@(a.Iban ?? "—")</code></td>
                         <td>@(a.Product ?? "—")</td>
                         <td>@(a.Currency ?? "—")</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-secondary me-1"
-                                    onclick="loadData('balances', '@a.Uid')">Balances</button>
-                            <button class="btn btn-sm btn-outline-secondary"
-                                    onclick="loadData('transactions', '@a.Uid')">Transactions</button>
-                        </td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
-
-    <h6>Raw response</h6>
-    <pre id="rawJson" class="p-3 border rounded bg-body-tertiary" style="max-height: 60vh; overflow: auto;">Click Balances or Transactions to fetch.</pre>
 }
 else
 {
-    <p class="text-muted">No active session. Link a bank above to begin.</p>
+    <p class="text-muted">No banks linked yet. Link one above to get started.</p>
 }
 
 @section Scripts {
@@ -95,24 +85,10 @@ else
         if (aspspSelect && aspspCountry) {
             const syncCountry = () => {
                 const opt = aspspSelect.options[aspspSelect.selectedIndex];
-                aspspCountry.value = opt.getAttribute('data-country');
+                if (opt) aspspCountry.value = opt.getAttribute('data-country');
             };
             aspspSelect.addEventListener('change', syncCountry);
             syncCountry();
-        }
-
-        async function loadData(kind, uid) {
-            const pre = document.getElementById('rawJson');
-            pre.textContent = 'Loading...';
-            const handler = kind === 'balances' ? 'Balances' : 'Transactions';
-            const url = `?handler=${handler}&accountUid=${encodeURIComponent(uid)}`;
-            const res = await fetch(url);
-            const text = await res.text();
-            try {
-                pre.textContent = JSON.stringify(JSON.parse(text), null, 2);
-            } catch {
-                pre.textContent = text;
-            }
         }
     </script>
 }
