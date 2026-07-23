@@ -9,14 +9,14 @@
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
 {
     <div class="alert alert-danger">@Model.ErrorMessage</div>
-    <a class="btn btn-secondary btn-sm" asp-page="/EnableBanking/Index">Back to Linked Banks</a>
+    <a class="btn btn-secondary btn-sm" asp-page="/User/Index" asp-fragment="bank-connections">Back to Settings</a>
 }
 else if (Model.Session is not null)
 {
     <div class="alert alert-success">
         Session established. @Model.Session.Accounts.Count account(s) linked, valid until @Model.Session.ValidUntil.ToString("u").
     </div>
-    <a class="btn btn-primary btn-sm" asp-page="/EnableBanking/Index">Continue to Linked Banks</a>
+    <a class="btn btn-primary btn-sm" asp-page="/User/Index" asp-fragment="bank-connections">Continue to Settings</a>
 }
 else
 {

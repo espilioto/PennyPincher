@@ -5,8 +5,8 @@ using PennyPincher.Contracts.EnableBanking;
 
 namespace PennyPincher.Services.EnableBanking;
 
-// TODO: persist as BankConnection entity once sandbox evaluation is done.
-// Sandbox-only: session stored in IMemoryCache keyed by userId, lost on restart.
+// TODO: persist as BankConnection entities once sandbox evaluation is done.
+// Sandbox-only: connections stored in IMemoryCache keyed by userId, lost on restart.
 public class EnableBankingService : IEnableBankingService
 {
     private readonly IEnableBankingClient _client;
@@ -38,11 +38,13 @@ public class EnableBankingService : IEnableBankingService
         if (result.IsError)
             return result.Errors;
 
-        _cache.Set(PendingStateKey(userId), state, TimeSpan.FromMinutes(15));
+        // Remember which bank this auth is for — the session response doesn't
+        // echo the ASPSP, so CompleteAuth resolves it back via the state token.
+        _cache.Set(PendingKey(state), new PendingAuth(request.AspspName, request.AspspCountry), TimeSpan.FromMinutes(15));
         return new StartAuthResponse(result.Value.AuthUrl, state);
     }
 
-    public async Task<ErrorOr<CompleteAuthResponse>> CompleteAuthAsync(string userId, string code, CancellationToken ct)
+    public async Task<ErrorOr<CompleteAuthResponse>> CompleteAuthAsync(string userId, string code, string? state, CancellationToken ct)
     {
         var result = await _client.CreateSessionAsync(code, ct);
         if (result.IsError)
@@ -53,26 +55,54 @@ public class EnableBankingService : IEnableBankingService
             .Select(a => new LinkedAccountDto(a.Uid, a.Iban, a.Name, a.Product, a.Currency, a.CashAccountType))
             .ToList();
 
-        var entry = new CachedSession(session.SessionId, session.ValidUntil, accounts);
-        _cache.Set(SessionKey(userId), entry, session.ValidUntil);
-        _logger.LogInformation("Session {SessionId} cached for user {UserId} with {AccountCount} accounts, valid until {ValidUntil}",
-            session.SessionId, userId, accounts.Count, session.ValidUntil);
+        PendingAuth? pending = null;
+        if (!string.IsNullOrEmpty(state))
+            _cache.TryGetValue(PendingKey(state), out pending);
+        var aspspName = pending?.AspspName ?? "Linked bank";
+        var aspspCountry = pending?.AspspCountry ?? string.Empty;
+
+        var connections = LoadConnections(userId);
+        connections[ConnectionKey(aspspName, aspspCountry)] =
+            new CachedConnection(aspspName, aspspCountry, session.SessionId, session.ValidUntil, accounts);
+        SaveConnections(userId, connections);
+
+        if (!string.IsNullOrEmpty(state))
+            _cache.Remove(PendingKey(state));
+
+        _logger.LogInformation("Connection to {Aspsp} ({Country}) cached for user {UserId}: {AccountCount} account(s), valid until {ValidUntil}",
+            aspspName, aspspCountry, userId, accounts.Count, session.ValidUntil);
 
         return new CompleteAuthResponse(session.SessionId, session.ValidUntil, accounts);
     }
 
     public ErrorOr<IReadOnlyList<LinkedAccountDto>> GetCachedAccounts(string userId)
     {
-        if (!_cache.TryGetValue<CachedSession>(SessionKey(userId), out var session) || session is null)
+        var connections = LoadConnections(userId);
+        if (connections.Count == 0)
             return Error.NotFound(description: "No active Enable Banking session — link an account first");
-        return ErrorOrFactory.From<IReadOnlyList<LinkedAccountDto>>(session.Accounts);
+
+        var accounts = connections.Values.SelectMany(c => c.Accounts).ToList();
+        return ErrorOrFactory.From<IReadOnlyList<LinkedAccountDto>>(accounts);
+    }
+
+    public IReadOnlyList<BankConnectionDto> GetConnections(string userId)
+    {
+        return LoadConnections(userId).Values
+            .OrderBy(c => c.AspspName, StringComparer.OrdinalIgnoreCase)
+            .Select(c => new BankConnectionDto(c.AspspName, c.AspspCountry, c.ValidUntil, c.Accounts))
+            .ToList();
     }
 
     public SessionStatusDto GetSessionStatus(string userId)
     {
-        if (!_cache.TryGetValue<CachedSession>(SessionKey(userId), out var session) || session is null)
+        var connections = LoadConnections(userId).Values;
+        if (connections.Count == 0)
             return new SessionStatusDto(false, null, 0);
-        return new SessionStatusDto(true, session.ValidUntil, session.Accounts.Count);
+
+        return new SessionStatusDto(
+            IsLinked: true,
+            ValidUntil: connections.Min(c => c.ValidUntil),
+            AccountCount: connections.Sum(c => c.Accounts.Count));
     }
 
     public async Task<ErrorOr<List<AccountBalanceDto>>> GetBalancesAsync(string userId, string accountUid, CancellationToken ct)
@@ -127,14 +157,25 @@ public class EnableBankingService : IEnableBankingService
     }
 
     private bool IsKnownAccount(string userId, string accountUid)
+        => LoadConnections(userId).Values.SelectMany(c => c.Accounts).Any(a => a.Uid == accountUid);
+
+    private Dictionary<string, CachedConnection> LoadConnections(string userId)
+        => _cache.TryGetValue<Dictionary<string, CachedConnection>>(ConnectionsKey(userId), out var connections) && connections is not null
+            ? connections
+            : new Dictionary<string, CachedConnection>();
+
+    private void SaveConnections(string userId, Dictionary<string, CachedConnection> connections)
     {
-        if (!_cache.TryGetValue<CachedSession>(SessionKey(userId), out var session) || session is null)
-            return false;
-        return session.Accounts.Any(a => a.Uid == accountUid);
+        // Keep the store alive as long as the longest-lived connection; expired
+        // connections stay visible (flagged in the UI) so the user can re-link.
+        var latest = connections.Values.Max(c => c.ValidUntil);
+        _cache.Set(ConnectionsKey(userId), connections, latest);
     }
 
-    private static string SessionKey(string userId) => $"eb:session:{userId}";
-    private static string PendingStateKey(string userId) => $"eb:state:{userId}";
+    private static string ConnectionsKey(string userId) => $"eb:connections:{userId}";
+    private static string PendingKey(string state) => $"eb:pending:{state}";
+    private static string ConnectionKey(string aspspName, string aspspCountry) => $"{aspspName}|{aspspCountry}";
 
-    private record CachedSession(string SessionId, DateTimeOffset ValidUntil, List<LinkedAccountDto> Accounts);
+    private record CachedConnection(string AspspName, string AspspCountry, string SessionId, DateTimeOffset ValidUntil, List<LinkedAccountDto> Accounts);
+    private record PendingAuth(string AspspName, string AspspCountry);
 }

@@ -43,7 +43,7 @@ public class EnableBankingController : ErrorOrApiController
         if (userId is null)
             return Problem(ErrorOr.Error.Forbidden());
 
-        var result = await _service.CompleteAuthAsync(userId, request.Code, ct);
+        var result = await _service.CompleteAuthAsync(userId, request.Code, request.State, ct);
         return result.Match(r => Ok(r), errors => Problem(errors));
     }
 
@@ -66,6 +66,16 @@ public class EnableBankingController : ErrorOrApiController
             return Problem(ErrorOr.Error.Forbidden());
 
         return Ok(_service.GetSessionStatus(userId));
+    }
+
+    [HttpGet("connections")]
+    public IActionResult GetConnections()
+    {
+        var userId = User.GetUserId();
+        if (userId is null)
+            return Problem(ErrorOr.Error.Forbidden());
+
+        return Ok(_service.GetConnections(userId));
     }
 
     [HttpGet("accounts/{accountUid}/balances")]

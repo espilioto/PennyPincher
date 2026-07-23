@@ -32,7 +32,7 @@ public class CallbackModel : PageModel
         }
 
         var client = _httpClientFactory.CreateClient("PennyPincherApi");
-        var resp = await client.PostAsJsonAsync("api/enablebanking/auth/complete", new CompleteAuthRequest(code));
+        var resp = await client.PostAsJsonAsync("api/enablebanking/auth/complete", new CompleteAuthRequest(code, state));
         if (!resp.IsSuccessStatusCode)
         {
             ErrorMessage = $"Session exchange failed ({(int)resp.StatusCode}): {await resp.Content.ReadAsStringAsync()}";

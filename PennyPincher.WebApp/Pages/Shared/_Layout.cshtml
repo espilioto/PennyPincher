@@ -56,10 +56,6 @@
                     <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/Categories") == true ? "active" : "")"
                        asp-page="/Categories/Index">Categories</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/EnableBanking") == true ? "active" : "")"
-                       asp-page="/EnableBanking/Index">Linked Banks</a>
-                </li>
             </ul>
 
             <div class="mt-auto">

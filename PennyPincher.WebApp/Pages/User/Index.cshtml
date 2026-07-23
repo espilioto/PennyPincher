@@ -20,6 +20,106 @@
         </div>
     </div>
 
+    <!-- Bank Connections -->
+    <div class="card mb-4" id="bank-connections">
+        <div class="card-header">
+            <h6 class="mb-0">Bank Connections</h6>
+            <small class="text-muted">Link your banks via Enable Banking to reconcile balances and transactions.</small>
+        </div>
+        <div class="card-body">
+            @if (!string.IsNullOrEmpty(Model.BankErrorMessage))
+            {
+                <div class="alert alert-danger">@Model.BankErrorMessage</div>
+            }
+
+            @if (Model.Connections.Count == 0)
+            {
+                <p class="text-muted">No banks linked yet. Link one below to get started.</p>
+            }
+            else
+            {
+                foreach (var conn in Model.Connections)
+                {
+                    var daysLeft = (int)Math.Ceiling((conn.ValidUntil - DateTimeOffset.UtcNow).TotalDays);
+                    var expired = daysLeft <= 0;
+                    var expiringSoon = daysLeft is > 0 and <= 14;
+                    var badgeClass = expired ? "text-bg-danger" : expiringSoon ? "text-bg-warning" : "text-bg-success";
+                    var btnClass = expired ? "btn-danger" : expiringSoon ? "btn-warning" : "btn-outline-secondary";
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                            <div>
+                                <span class="fw-semibold">@conn.AspspName</span>
+                                <span class="text-muted small">(@conn.AspspCountry)</span>
+                                <span class="badge @badgeClass ms-2">@(expired ? "Expired" : $"Valid until {conn.ValidUntil:d MMM yyyy}")</span>
+                                @if (!expired)
+                                {
+                                    <span class="text-muted small ms-1">(@daysLeft day@(daysLeft == 1 ? "" : "s") left)</span>
+                                }
+                            </div>
+                            <form method="post" asp-page-handler="Link" class="m-0">
+                                <input type="hidden" name="aspspName" value="@conn.AspspName" />
+                                <input type="hidden" name="aspspCountry" value="@conn.AspspCountry" />
+                                <button type="submit" class="btn btn-sm @btnClass">@(expired ? "Re-link now" : "Re-link")</button>
+                            </form>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>IBAN / ID</th>
+                                        <th>Product</th>
+                                        <th>Currency</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var a in conn.Accounts)
+                                    {
+                                        <tr>
+                                            <td>@(a.Name ?? "—")</td>
+                                            <td><code class="small">@(a.Iban ?? "—")</code></td>
+                                            <td>@(a.Product ?? "—")</td>
+                                            <td>@(a.Currency ?? "—")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            }
+
+            <hr />
+
+            <div class="fw-semibold mb-2">Link a bank</div>
+            <form method="get" class="d-flex gap-2 align-items-end mb-3">
+                <div>
+                    <label class="form-label small text-muted mb-1">Country</label>
+                    <select asp-for="Country" asp-items="Model.CountryItems"
+                            class="form-select form-select-sm" style="width: 12rem;"
+                            onchange="this.form.submit()"></select>
+                </div>
+                <span class="text-muted small ms-2 mb-2">@Model.Banks.Count bank(s) available</span>
+            </form>
+
+            <form method="post" asp-page-handler="Link" class="d-flex gap-2 align-items-end">
+                <div>
+                    <label class="form-label small text-muted mb-1">Bank</label>
+                    <select name="aspspName" class="form-select form-select-sm" id="aspspSelect">
+                        @foreach (var b in Model.Banks)
+                        {
+                            <option value="@b.Name" data-country="@b.Country">@b.Name (@b.Country)@(b.Beta ? " · beta" : "")@(b.PsuTypes.Contains("personal") ? "" : " · no personal")</option>
+                        }
+                    </select>
+                </div>
+                <input type="hidden" name="aspspCountry" id="aspspCountry" value="@(Model.Banks.FirstOrDefault()?.Country ?? Model.Country)" />
+                <button type="submit" class="btn btn-primary btn-sm" disabled="@(Model.Banks.Count == 0)">Link</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Security -->
     <div class="card mb-4">
         <div class="card-header">
@@ -93,6 +193,20 @@
 
 @section Scripts {
 <script>
+    // Keep the hidden ASPSP country in sync with the selected bank.
+    (function () {
+        var bankSelect = document.getElementById('aspspSelect');
+        var bankCountry = document.getElementById('aspspCountry');
+        if (bankSelect && bankCountry) {
+            var sync = function () {
+                var opt = bankSelect.options[bankSelect.selectedIndex];
+                if (opt) bankCountry.value = opt.getAttribute('data-country');
+            };
+            bankSelect.addEventListener('change', sync);
+            sync();
+        }
+    })();
+
     function setAlert(el, variant, text) {
         el.innerHTML = '';
         var div = document.createElement('div');
