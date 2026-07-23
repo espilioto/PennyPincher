@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using PennyPincher.Contracts.EnableBanking;
 
 namespace PennyPincher.WebApp.Pages.EnableBanking;
@@ -24,6 +25,45 @@ public class IndexModel : PageModel
     // Two-letter country filter for the bank catalog. Defaults to Greece.
     [BindProperty(SupportsGet = true)]
     public string Country { get; set; } = "GR";
+
+    // Enable Banking's supported markets (enablebanking.com/docs/markets).
+    public static readonly (string Code, string Name)[] Countries =
+    [
+        ("AT", "Austria"),
+        ("BE", "Belgium"),
+        ("BG", "Bulgaria"),
+        ("HR", "Croatia"),
+        ("CY", "Cyprus"),
+        ("CZ", "Czechia"),
+        ("DK", "Denmark"),
+        ("EE", "Estonia"),
+        ("FI", "Finland"),
+        ("FR", "France"),
+        ("DE", "Germany"),
+        ("GR", "Greece"),
+        ("HU", "Hungary"),
+        ("IS", "Iceland"),
+        ("IE", "Ireland"),
+        ("IT", "Italy"),
+        ("LV", "Latvia"),
+        ("LI", "Liechtenstein"),
+        ("LT", "Lithuania"),
+        ("LU", "Luxembourg"),
+        ("MT", "Malta"),
+        ("NL", "Netherlands"),
+        ("NO", "Norway"),
+        ("PL", "Poland"),
+        ("PT", "Portugal"),
+        ("RO", "Romania"),
+        ("SK", "Slovakia"),
+        ("SI", "Slovenia"),
+        ("ES", "Spain"),
+        ("SE", "Sweden"),
+        ("GB", "United Kingdom"),
+    ];
+
+    public IEnumerable<SelectListItem> CountryItems =>
+        Countries.Select(c => new SelectListItem($"{c.Name} ({c.Code})", c.Code));
 
     public async Task OnGetAsync()
     {
