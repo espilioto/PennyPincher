@@ -20,6 +20,7 @@ public class IndexModel : PageModel
 
     public List<LinkedAccountDto> Accounts { get; set; } = [];
     public List<AspspDto> Banks { get; set; } = [];
+    public SessionStatusDto? SessionStatus { get; set; }
     public string? ErrorMessage { get; set; }
 
     // Two-letter country filter for the bank catalog. Defaults to Greece.
@@ -86,6 +87,10 @@ public class IndexModel : PageModel
         var resp = await client.GetAsync("api/enablebanking/accounts");
         if (resp.IsSuccessStatusCode)
             Accounts = await resp.Content.ReadFromJsonAsync<List<LinkedAccountDto>>() ?? [];
+
+        var sessionResp = await client.GetAsync("api/enablebanking/session");
+        if (sessionResp.IsSuccessStatusCode)
+            SessionStatus = await sessionResp.Content.ReadFromJsonAsync<SessionStatusDto>();
     }
 
     public async Task<IActionResult> OnPostLinkAsync(string aspspName, string aspspCountry)

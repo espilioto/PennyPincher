@@ -68,6 +68,13 @@ public class EnableBankingService : IEnableBankingService
         return ErrorOrFactory.From<IReadOnlyList<LinkedAccountDto>>(session.Accounts);
     }
 
+    public SessionStatusDto GetSessionStatus(string userId)
+    {
+        if (!_cache.TryGetValue<CachedSession>(SessionKey(userId), out var session) || session is null)
+            return new SessionStatusDto(false, null, 0);
+        return new SessionStatusDto(true, session.ValidUntil, session.Accounts.Count);
+    }
+
     public async Task<ErrorOr<List<AccountBalanceDto>>> GetBalancesAsync(string userId, string accountUid, CancellationToken ct)
     {
         if (!IsKnownAccount(userId, accountUid))

@@ -6,17 +6,47 @@
 
 @Html.AntiForgeryToken()
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0">Linked Banks</h4>
-    <span class="text-muted small">@Model.Accounts.Count linked account(s)</span>
-</div>
+<h4 class="mb-3">Linked Banks</h4>
 
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
 {
     <div class="alert alert-danger">@Model.ErrorMessage</div>
 }
 
-<div class="card mb-4">
+@if (Model.SessionStatus?.IsLinked == true)
+{
+    var validUntil = Model.SessionStatus.ValidUntil;
+    int? daysLeft = validUntil.HasValue
+        ? (int)Math.Ceiling((validUntil.Value - DateTimeOffset.UtcNow).TotalDays)
+        : null;
+    var expired = daysLeft is <= 0;
+    var expiringSoon = daysLeft is > 0 and <= 14;
+    var alertClass = expired ? "alert-danger" : expiringSoon ? "alert-warning" : "alert-success";
+    var btnClass = expired ? "btn-danger" : expiringSoon ? "btn-warning" : "btn-outline-secondary";
+
+    <div class="alert @alertClass d-flex justify-content-between align-items-center">
+        <div>
+            @if (expired)
+            {
+                <strong>Connection expired.</strong>
+                <span>Re-link to reconnect and refresh your accounts.</span>
+            }
+            else
+            {
+                <strong>Connected</strong>
+                <span>· @Model.SessionStatus.AccountCount account(s)</span>
+                @if (validUntil.HasValue)
+                {
+                    <span>· valid until @validUntil.Value.ToString("d MMM yyyy")</span>
+                    <span class="opacity-75">(@daysLeft day@(daysLeft == 1 ? "" : "s") left)</span>
+                }
+            }
+        </div>
+        <a class="btn btn-sm @btnClass" href="#link-bank">@(expired ? "Re-link now" : "Re-link")</a>
+    </div>
+}
+
+<div class="card mb-4" id="link-bank">
     <div class="card-body">
         <h6 class="card-title">Link a bank</h6>
 

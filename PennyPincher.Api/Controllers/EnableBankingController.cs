@@ -58,6 +58,16 @@ public class EnableBankingController : ErrorOrApiController
         return result.Match(r => Ok(r), errors => Problem(errors));
     }
 
+    [HttpGet("session")]
+    public IActionResult GetSession()
+    {
+        var userId = User.GetUserId();
+        if (userId is null)
+            return Problem(ErrorOr.Error.Forbidden());
+
+        return Ok(_service.GetSessionStatus(userId));
+    }
+
     [HttpGet("accounts/{accountUid}/balances")]
     public async Task<IActionResult> GetBalances(string accountUid, CancellationToken ct)
     {
