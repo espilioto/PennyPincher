@@ -21,7 +21,7 @@ public record AspspsResult(List<EbAspspSummary> Aspsps);
 public record EbAspspSummary(string Name, string Country, List<string> PsuTypes, bool Beta);
 public record AuthStartResult(string AuthUrl);
 public record SessionResult(string SessionId, DateTimeOffset ValidUntil, List<EbAccountSummary> Accounts);
-public record EbAccountSummary(string Uid, string? Iban, string? Name, string? Product, string? Currency, string? CashAccountType);
+public record EbAccountSummary(string Uid, string? Iban, string? Name, string? Product, string? Currency, string? CashAccountType, bool IsCard);
 public record BalancesResult(List<EbBalanceSummary> Balances);
 public record EbBalanceSummary(string BalanceType, decimal Amount, string Currency, DateTimeOffset? LastChangeDateTime);
 public record TransactionsResult(List<EbTransactionSummary> Transactions);
@@ -143,7 +143,12 @@ public class EnableBankingClient : IEnableBankingClient
                 a.Name,
                 a.Product,
                 a.Currency,
-                a.CashAccountType
+                a.CashAccountType,
+                // Cards (e.g. Piraeus CPAN) carry no IBAN — they identify via
+                // other.identification — and/or report cash_account_type CARD.
+                // Their balances are placeholders, so we flag them to exclude.
+                IsCard: string.Equals(a.CashAccountType, "CARD", StringComparison.OrdinalIgnoreCase)
+                        || string.IsNullOrWhiteSpace(a.AccountId?.Iban)
             )).ToList();
 
             // valid_until nests inside `access`. Fall back to now+180 days if the bank omits it.

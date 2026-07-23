@@ -52,7 +52,7 @@ public class EnableBankingService : IEnableBankingService
 
         var session = result.Value;
         var accounts = session.Accounts
-            .Select(a => new LinkedAccountDto(a.Uid, a.Iban, a.Name, a.Product, a.Currency, a.CashAccountType))
+            .Select(a => new LinkedAccountDto(a.Uid, a.Iban, a.Name, a.Product, a.Currency, a.CashAccountType, a.IsCard))
             .ToList();
 
         PendingAuth? pending = null;
@@ -102,11 +102,16 @@ public class EnableBankingService : IEnableBankingService
         var results = new List<BankBalanceDto>();
         foreach (var conn in connections.Values.OrderBy(c => c.AspspName, StringComparer.OrdinalIgnoreCase))
         {
+            // Cards report placeholder balances (e.g. Piraeus CPAN = 2000 flat),
+            // so they'd inflate the total — exclude them.
+            var accounts = conn.Accounts.Where(x => !x.IsCard).ToList();
+
             decimal total = 0m;
             string? currency = null;
-            var available = true;
+            // No non-card account (e.g. a card-only connection) — nothing to sum.
+            var available = accounts.Count > 0;
 
-            foreach (var account in conn.Accounts)
+            foreach (var account in accounts)
             {
                 var balancesResult = await _client.GetBalancesAsync(account.Uid, ct);
                 var picked = balancesResult.IsError ? null : PickRepresentative(balancesResult.Value.Balances);

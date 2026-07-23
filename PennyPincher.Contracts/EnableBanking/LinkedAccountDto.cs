@@ -6,5 +6,6 @@ public record LinkedAccountDto(
         string? Name,
         string? Product,
         string? Currency,
-        string? CashAccountType
+        string? CashAccountType,
+        bool IsCard = false
     );
