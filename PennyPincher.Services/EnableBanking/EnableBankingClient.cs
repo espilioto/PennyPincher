@@ -10,12 +10,15 @@ namespace PennyPincher.Services.EnableBanking;
 
 public interface IEnableBankingClient
 {
+    Task<ErrorOr<AspspsResult>> GetAspspsAsync(string? country, CancellationToken ct);
     Task<ErrorOr<AuthStartResult>> StartAuthAsync(string aspspName, string aspspCountry, string state, CancellationToken ct);
     Task<ErrorOr<SessionResult>> CreateSessionAsync(string code, CancellationToken ct);
     Task<ErrorOr<BalancesResult>> GetBalancesAsync(string accountUid, CancellationToken ct);
     Task<ErrorOr<TransactionsResult>> GetTransactionsAsync(string accountUid, DateOnly dateFrom, CancellationToken ct);
 }
 
+public record AspspsResult(List<EbAspspSummary> Aspsps);
+public record EbAspspSummary(string Name, string Country, List<string> PsuTypes, bool Beta);
 public record AuthStartResult(string AuthUrl);
 public record SessionResult(string SessionId, DateTimeOffset ValidUntil, List<EbAccountSummary> Accounts);
 public record EbAccountSummary(string Uid, string? Iban, string? Name, string? Product, string? Currency, string? CashAccountType);
@@ -59,6 +62,36 @@ public class EnableBankingClient : IEnableBankingClient
         _options = options.Value;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
+    }
+
+    public async Task<ErrorOr<AspspsResult>> GetAspspsAsync(string? country, CancellationToken ct)
+    {
+        try
+        {
+            var url = "aspsps";
+            if (!string.IsNullOrWhiteSpace(country))
+                url += $"?country={Uri.EscapeDataString(country)}";
+
+            using var req = BuildRequest(HttpMethod.Get, url, body: null);
+            using var resp = await _http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode)
+                return await ToErrorAsync(resp, "aspsps", ct);
+
+            var parsed = await resp.Content.ReadFromJsonAsync<AspspsResponse>(cancellationToken: ct);
+            if (parsed is null)
+                return Error.Unexpected(description: "Empty response from GET /aspsps");
+
+            var summaries = parsed.Aspsps
+                .Select(a => new EbAspspSummary(a.Name, a.Country, a.PsuTypes ?? [], a.Beta))
+                .ToList();
+
+            return new AspspsResult(summaries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GetAspsps failed");
+            return Error.Unexpected(description: ex.Message);
+        }
     }
 
     public async Task<ErrorOr<AuthStartResult>> StartAuthAsync(string aspspName, string aspspCountry, string state, CancellationToken ct)

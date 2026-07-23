@@ -5,6 +5,7 @@ namespace PennyPincher.Services.EnableBanking;
 
 public interface IEnableBankingService
 {
+    Task<ErrorOr<List<AspspDto>>> GetAspspsAsync(string? country, CancellationToken ct);
     Task<ErrorOr<StartAuthResponse>> StartAuthAsync(string userId, StartAuthRequest request, CancellationToken ct);
     Task<ErrorOr<CompleteAuthResponse>> CompleteAuthAsync(string userId, string code, CancellationToken ct);
     ErrorOr<IReadOnlyList<LinkedAccountDto>> GetCachedAccounts(string userId);

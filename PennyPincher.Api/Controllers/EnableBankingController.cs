@@ -18,6 +18,13 @@ public class EnableBankingController : ErrorOrApiController
         _service = service;
     }
 
+    [HttpGet("aspsps")]
+    public async Task<IActionResult> GetAspsps([FromQuery] string? country, CancellationToken ct)
+    {
+        var result = await _service.GetAspspsAsync(country, ct);
+        return result.Match(r => Ok(r), errors => Problem(errors));
+    }
+
     [HttpPost("auth/start")]
     public async Task<IActionResult> StartAuth([FromBody] StartAuthRequest request, CancellationToken ct)
     {

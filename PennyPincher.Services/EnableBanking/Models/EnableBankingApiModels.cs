@@ -5,6 +5,17 @@ namespace PennyPincher.Services.EnableBanking.Models;
 // Internal wire-format DTOs matching Enable Banking REST API.
 // Not public — callers see PennyPincher.Contracts.EnableBanking.* instead.
 
+internal record AspspsResponse(
+    [property: JsonPropertyName("aspsps")] List<EbAspsp> Aspsps
+);
+
+internal record EbAspsp(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("country")] string Country,
+    [property: JsonPropertyName("psu_types")] List<string>? PsuTypes,
+    [property: JsonPropertyName("beta")] bool Beta
+);
+
 internal record AuthStartBody(
     [property: JsonPropertyName("access")] AccessSpec Access,
     [property: JsonPropertyName("aspsp")] AspspSpec Aspsp,

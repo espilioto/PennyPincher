@@ -20,6 +20,17 @@ public class EnableBankingService : IEnableBankingService
         _logger = logger;
     }
 
+    public async Task<ErrorOr<List<AspspDto>>> GetAspspsAsync(string? country, CancellationToken ct)
+    {
+        var result = await _client.GetAspspsAsync(country, ct);
+        if (result.IsError)
+            return result.Errors;
+
+        return result.Value.Aspsps
+            .Select(a => new AspspDto(a.Name, a.Country, a.PsuTypes, a.Beta))
+            .ToList();
+    }
+
     public async Task<ErrorOr<StartAuthResponse>> StartAuthAsync(string userId, StartAuthRequest request, CancellationToken ct)
     {
         var state = Guid.NewGuid().ToString("N");

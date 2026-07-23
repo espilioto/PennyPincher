@@ -16,22 +16,27 @@ public class SandboxModel : PageModel
     }
 
     public List<LinkedAccountDto> Accounts { get; set; } = [];
+    public List<AspspDto> Aspsps { get; set; } = [];
     public string? ErrorMessage { get; set; }
 
-    // Mock ASPSPs exposed by Enable Banking's sandbox.
-    // Source: Enable Banking Control Panel → Sandbox → connectors.
-    public static readonly (string Name, string Country, string Label)[] MockAspsps =
-    [
-        ("Nordea", "FI", "Nordea (Mock FI)"),
-        ("OP", "FI", "OP (Mock FI)"),
-        ("Danske Bank", "FI", "Danske Bank (Mock FI)"),
-        ("SEB", "SE", "SEB (Mock SE)"),
-        ("Swedbank", "SE", "Swedbank (Mock SE)")
-    ];
+    // Two-letter country filter for the live ASPSP catalog. Defaults to Greece.
+    [BindProperty(SupportsGet = true)]
+    public string Country { get; set; } = "GR";
 
     public async Task OnGetAsync()
     {
         var client = _httpClientFactory.CreateClient("PennyPincherApi");
+
+        var country = string.IsNullOrWhiteSpace(Country) ? null : Country.Trim().ToUpperInvariant();
+        var aspspUrl = country is null
+            ? "api/enablebanking/aspsps"
+            : $"api/enablebanking/aspsps?country={Uri.EscapeDataString(country)}";
+        var aspspResp = await client.GetAsync(aspspUrl);
+        if (aspspResp.IsSuccessStatusCode)
+            Aspsps = await aspspResp.Content.ReadFromJsonAsync<List<AspspDto>>() ?? [];
+        else
+            ErrorMessage = $"Failed to load ASPSP list ({(int)aspspResp.StatusCode}): {await aspspResp.Content.ReadAsStringAsync()}";
+
         var resp = await client.GetAsync("api/enablebanking/accounts");
         if (resp.IsSuccessStatusCode)
             Accounts = await resp.Content.ReadFromJsonAsync<List<LinkedAccountDto>>() ?? [];
