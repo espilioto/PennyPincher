@@ -20,6 +20,39 @@
         </div>
     </div>
 
+    <!-- Security -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">Security</h6>
+            <small class="text-muted">Update the password used to sign in.</small>
+        </div>
+        <div class="card-body" style="max-width: 400px;">
+            <div id="pwd-msg"></div>
+            <div class="mb-3">
+                <label for="pwd-current" class="form-label small">Current password</label>
+                <div class="input-group">
+                    <input type="password" class="form-control" id="pwd-current" />
+                    <button class="btn btn-outline-secondary pwd-toggle" type="button" tabindex="-1" aria-label="Show password">&#128065;</button>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="pwd-new" class="form-label small">New password</label>
+                <div class="input-group">
+                    <input type="password" class="form-control" id="pwd-new" />
+                    <button class="btn btn-outline-secondary pwd-toggle" type="button" tabindex="-1" aria-label="Show password">&#128065;</button>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="pwd-confirm" class="form-label small">Confirm new password</label>
+                <div class="input-group">
+                    <input type="password" class="form-control" id="pwd-confirm" />
+                    <button class="btn btn-outline-secondary pwd-toggle" type="button" tabindex="-1" aria-label="Show password">&#128065;</button>
+                </div>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="changePassword()">Update Password</button>
+        </div>
+    </div>
+
     <!-- Bank Connections -->
     <div class="card mb-4" id="bank-connections">
         <div class="card-header">
@@ -117,39 +150,6 @@
                 <input type="hidden" name="aspspCountry" id="aspspCountry" value="@(Model.Banks.FirstOrDefault()?.Country ?? Model.Country)" />
                 <button type="submit" class="btn btn-primary btn-sm" disabled="@(Model.Banks.Count == 0)">Link</button>
             </form>
-        </div>
-    </div>
-
-    <!-- Security -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h6 class="mb-0">Security</h6>
-            <small class="text-muted">Update the password used to sign in.</small>
-        </div>
-        <div class="card-body" style="max-width: 400px;">
-            <div id="pwd-msg"></div>
-            <div class="mb-3">
-                <label for="pwd-current" class="form-label small">Current password</label>
-                <div class="input-group">
-                    <input type="password" class="form-control" id="pwd-current" />
-                    <button class="btn btn-outline-secondary pwd-toggle" type="button" tabindex="-1" aria-label="Show password">&#128065;</button>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label for="pwd-new" class="form-label small">New password</label>
-                <div class="input-group">
-                    <input type="password" class="form-control" id="pwd-new" />
-                    <button class="btn btn-outline-secondary pwd-toggle" type="button" tabindex="-1" aria-label="Show password">&#128065;</button>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label for="pwd-confirm" class="form-label small">Confirm new password</label>
-                <div class="input-group">
-                    <input type="password" class="form-control" id="pwd-confirm" />
-                    <button class="btn btn-outline-secondary pwd-toggle" type="button" tabindex="-1" aria-label="Show password">&#128065;</button>
-                </div>
-            </div>
-            <button class="btn btn-sm btn-primary" onclick="changePassword()">Update Password</button>
         </div>
     </div>
 
