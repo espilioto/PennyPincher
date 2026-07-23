@@ -1,0 +1,106 @@
+@page
+@model PennyPincher.WebApp.Pages.EnableBanking.SandboxModel
+@{
+    ViewData["Title"] = "Enable Banking (sandbox)";
+}
+
+@Html.AntiForgeryToken()
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Enable Banking &mdash; Sandbox</h4>
+    <span class="text-muted small">@Model.Accounts.Count linked account(s)</span>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="card-title">Link a Mock ASPSP</h6>
+        <form method="post" asp-page-handler="Link" class="d-flex gap-2 align-items-end">
+            <div>
+                <label class="form-label small text-muted mb-1">ASPSP</label>
+                <select name="aspspName" class="form-select form-select-sm" id="aspspSelect">
+                    @foreach (var (name, country, label) in PennyPincher.WebApp.Pages.EnableBanking.SandboxModel.MockAspsps)
+                    {
+                        <option value="@name" data-country="@country">@label</option>
+                    }
+                </select>
+            </div>
+            <input type="hidden" name="aspspCountry" id="aspspCountry" value="FI" />
+            <button type="submit" class="btn btn-primary btn-sm">Link</button>
+        </form>
+    </div>
+</div>
+
+@if (Model.Accounts.Count > 0)
+{
+    <div class="table-responsive mb-4">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>IBAN / ID</th>
+                    <th>Product</th>
+                    <th>Currency</th>
+                    <th style="width: 240px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model.Accounts)
+                {
+                    <tr>
+                        <td>@(a.Name ?? "—")</td>
+                        <td><code class="small">@(a.Iban ?? "—")</code></td>
+                        <td>@(a.Product ?? "—")</td>
+                        <td>@(a.Currency ?? "—")</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-secondary me-1"
+                                    onclick="loadData('balances', '@a.Uid')">Balances</button>
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    onclick="loadData('transactions', '@a.Uid')">Transactions</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <h6>Raw response</h6>
+    <pre id="rawJson" class="p-3 border rounded bg-body-tertiary" style="max-height: 60vh; overflow: auto;">Click Balances or Transactions to fetch.</pre>
+}
+else
+{
+    <p class="text-muted">No active session. Link a Mock ASPSP above to begin.</p>
+}
+
+@section Scripts {
+    <script>
+        const aspspSelect = document.getElementById('aspspSelect');
+        const aspspCountry = document.getElementById('aspspCountry');
+        if (aspspSelect && aspspCountry) {
+            const syncCountry = () => {
+                const opt = aspspSelect.options[aspspSelect.selectedIndex];
+                aspspCountry.value = opt.getAttribute('data-country');
+            };
+            aspspSelect.addEventListener('change', syncCountry);
+            syncCountry();
+        }
+
+        async function loadData(kind, uid) {
+            const pre = document.getElementById('rawJson');
+            pre.textContent = 'Loading...';
+            const handler = kind === 'balances' ? 'Balances' : 'Transactions';
+            const url = `?handler=${handler}&accountUid=${encodeURIComponent(uid)}`;
+            const res = await fetch(url);
+            const text = await res.text();
+            try {
+                pre.textContent = JSON.stringify(JSON.parse(text), null, 2);
+            } catch {
+                pre.textContent = text;
+            }
+        }
+    </script>
+}
